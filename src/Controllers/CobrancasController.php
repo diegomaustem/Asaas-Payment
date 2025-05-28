@@ -11,20 +11,13 @@ class CobrancasController
         $this->metodo = $metodo;
     }
 
-    public function listarCobrancas() 
+    public function index() 
     {
-        return json_encode([
-            'message' => 'Listando cobranças',
-            'metodo' => $this->metodo
-        ]);
-
+        return 'Listando cobranças';
     }
 
-    public function criarCobranca() 
+    public function store() 
     {
-        return json_encode([
-            'message' => 'Criando cobrança',
-            'metodo' => $this->metodo
-        ]);
+        return 'Criar cobranças';
     }
 }

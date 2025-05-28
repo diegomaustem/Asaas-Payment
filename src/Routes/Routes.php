@@ -1,23 +1,14 @@
 <?php 
-
 namespace App\Routes;
-
 class Routes
 {
     public static function getRoutes() : array
     {
         return [
-            'rotas' => [
-                ['path' => '/criarCobranca',
-                'controller' => 'App\\Controllers\\CobrancasController',
-                'method' => 'criarCobranca',
-                'verb' => 'POST'],
-
-                ['path' => '/listarCobrancas',
-                'controller' => 'App\\Controllers\\CobrancasController',
-                'method' => 'listarCobrancas', 
-                'verb' => 'GET']
-            ]
+            'GET_/listarCobrancas' => 
+                ['controller' => 'App\\Controllers\\CobrancasController', 'method' => 'index'],
+            'POST_/criarCobranca' => 
+                ['controller' => 'App\\Controllers\\CobrancasController', 'method' => 'store'],
         ];
     }
 }

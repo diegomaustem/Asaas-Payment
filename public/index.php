@@ -1,30 +1,66 @@
 <?php 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use Swoole\Http\Server;
+use Swoole\Http\Request;
+use Swoole\Http\Response;
+
 use App\Routes\Routes;
-use App\Utils\Mensagens;
 
-$verbo = $_SERVER['REQUEST_METHOD'];
-$uri    = $_SERVER['REQUEST_URI'] ?? '';
+$http = new Server("0.0.0.0", 9501);
 
-$metodo = explode("/api", $uri)[1];
+$http->set([
+    'worker_num'      => 4,
+    'enable_coroutine' => true,
+    'log_file'        => '/tmp/swoole.log',
+]);
+
+$http->on('start', function (Server $server) {
+    echo "Servidor Rodando." . PHP_EOL;
+});
 
 $routes = new Routes();
-$rotas = $routes->getRoutes();
+$rotas  = $routes->getRoutes();
 
-foreach ($rotas['rotas'] as $rota) {
-    if($rota['path'] === $metodo && $rota['verb'] === $verbo){
+$http->on('request', function (Request $request, Response $response) use ($rotas){
+    $response->header("Content-Type", "application/json; charset=utf-8");
 
-        $controller = $rota['controller'];
+    $uri    = $request->server['request_uri'];
+    $metodo = $request->server['request_method'];
+    $path   = explode("/api", $uri)[1];
+
+    $chaveRota = $metodo . '_' . $path;
+
+    if(!isset($rotas[$chaveRota])){
+        $response->status(404);
+        $response->end(json_encode([
+            'code' => 404,
+            'error' => 'Rota não encontrada ou verbo não reconhecido.',
+        ]));
+    }else {
+        $inforRota = $rotas[$chaveRota];
+        $classeControlador = $inforRota['controller'];
+        $metodoControlador = $inforRota['method'];
 
         try {
-            $instaciaController = new $controller($rota['method']);
-            $instaciaController->{$rota['method']}(); 
-        }catch(\Throwable $th){
-            error_log("Log error:" . $th->getMessage());
-            Mensagens::erro("Erro interno: serviço indisponível no momento.", 500);
+            $instController = new $classeControlador($metodoControlador);
+            $resposta = $instController->{$metodoControlador}(); 
+
+            $response->end(json_encode([
+                'status' => 'success',
+                'data'   => $resposta
+            ]));
+ 
+        } catch (\Throwable $th) {
+            error_log("Log error: " . $th->getMessage());
+            $response->status(500);
+            $response->end(json_encode([
+                'code' => 500,
+                'error' => 'Erro interno: serviço indisponível no momento.',
+
+            ]));
         }
-    }else{
-        Mensagens::erro('Rota não encontrada ou verbo não reconhecido.', 404);
     }
-}
+});
+
+$http->start();
