@@ -43,8 +43,8 @@ $http->on('request', function (Request $request, Response $response) use ($rotas
         $metodoControlador = $inforRota['method'];
 
         try {
-            $instController = new $classeControlador($metodoControlador);
-            $resposta = $instController->{$metodoControlador}(); 
+            $instController = new $classeControlador();
+            $resposta = $instController->{$metodoControlador}($request, $response);
 
             $response->end(json_encode([
                 'status' => 'success',
