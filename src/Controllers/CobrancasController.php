@@ -3,28 +3,46 @@ namespace App\Controllers;
 
 use Swoole\Http\Request;
 use Swoole\Http\Response;
+use App\Services\Asaas\Asaas;
+use Swoole\Coroutine\Channel;
 class CobrancasController
 {
-    public function index(Request $request, Response $response) 
+    public function index() 
     {
-        $request->post;
-        return 'Listando cobranças';
+        $channel = new Channel(1);
+
+        go(function () use ($channel) {
+            $metodo = 'GET';
+            $url = 'api-sandbox.asaas.com';
+            $endPoint = '/v3/payments';
+
+            $asaas = new Asaas($metodo, $url, $endPoint);
+            $resposta = $asaas->requisicaoAPIAsaas();
+
+            $channel->push($resposta);
+        });
+
+        $resultado = $channel->pop();
+
+        if ($resultado['status'] === 200) {
+            return $retorno = [
+                'status' => $resultado['status'],
+                'body' => json_decode($resultado['body'])
+            ];
+        } else {
+            return $retorno = [
+                'status' => $resultado['status'],
+                'body' => 'Erro ao buscar cobranças:'
+            ];
+        }
     }
 
     public function store(Request $request, Response $response) 
     {
-        $dadosEntrada = json_decode($request->rawContent(), true);
-
-        $validacao = $this->validaEntradas($dadosEntrada);
-
-        if($validacao !== true) {
-            $response->status($validacao['code']);
-            return $validacao;
-        }else {
-            // INSTANCIAR O SERVIÇO DE COBRANÇA
-        }
+        // $dadosEntrada = json_decode($request->rawContent(), true);
+        // $validacao = $this->validaEntradas($dadosEntrada);
     }
-
+    
     private function validaEntradas(array $dadosEntrada): array|bool
     {
         $errors = [];

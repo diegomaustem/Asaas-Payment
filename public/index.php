@@ -7,6 +7,9 @@ use Swoole\Http\Response;
 
 use App\Routes\Routes;
 
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../');
+$dotenv->load();
+
 $http = new Server("0.0.0.0", 9501);
 
 $http->set([
@@ -47,8 +50,8 @@ $http->on('request', function (Request $request, Response $response) use ($rotas
             $resposta = $instController->{$metodoControlador}($request, $response);
 
             $response->end(json_encode([
-                'status' => 'success',
-                'data'   => $resposta
+                'code'   => $resposta['status'],
+                'data'   => $resposta['body'],
             ]));
  
         } catch (\Throwable $th) {
