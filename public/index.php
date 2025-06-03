@@ -48,12 +48,9 @@ $http->on('request', function (Request $request, Response $response) use ($rotas
         try {
             $instController = new $classeControlador();
             $resposta = $instController->{$metodoControlador}($request, $response);
-
-            $response->end(json_encode([
-                'code'   => $resposta['status'],
-                'data'   => $resposta['body'],
-            ]));
- 
+          
+            $response->status($resposta['status']);
+            $response->end(json_encode($resposta));
         } catch (\Throwable $th) {
             error_log("Log error: " . $th->getMessage());
             $response->status(500);
