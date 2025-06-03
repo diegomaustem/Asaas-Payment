@@ -8,6 +8,33 @@ use App\Services\Asaas\Asaas;
 
 class ClientesController 
 {
+    public function index() 
+    {
+        $channelClientes = new Channel(1);
+
+        go(function () use ($channelClientes) {
+            $metodo = 'GET';
+            $endPoint = '/v3/customers';
+
+            $asaas = new Asaas($metodo, $endPoint, '');
+            $resposta = $asaas->requisicaoAPIAsaas();
+
+            $channelClientes->push($resposta);
+        });
+
+        $resultado = $channelClientes->pop();
+
+        if ($resultado['status'] == 200) {
+            return [
+                'status' => $resultado['status'], 
+                'message' => 'Lista de clientes obtida com sucesso.',
+                'data' => json_decode($resultado['body'])
+            ];
+        } else {
+            return ['status' => $resultado['status'], 'error' => $resultado['error']];             
+        }
+    }
+
     public function store(Request $request, Response $response) 
     {
         $dadosCliente = json_decode($request->rawContent(), true);
