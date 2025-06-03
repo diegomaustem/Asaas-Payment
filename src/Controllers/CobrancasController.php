@@ -9,31 +9,24 @@ class CobrancasController
 {
     public function index() 
     {
-        $channel = new Channel(1);
+        $channelCobranca = new Channel(1);
 
-        go(function () use ($channel) {
+        go(function () use ($channelCobranca) {
             $metodo = 'GET';
-            $url = 'api-sandbox.asaas.com';
             $endPoint = '/v3/payments';
 
-            $asaas = new Asaas($metodo, $url, $endPoint);
+            $asaas = new Asaas($metodo, $endPoint, '');
             $resposta = $asaas->requisicaoAPIAsaas();
 
-            $channel->push($resposta);
+            $channelCobranca->push($resposta);
         });
 
-        $resultado = $channel->pop();
+        $resultado = $channelCobranca->pop();
 
-        if ($resultado['status'] === 200) {
-            return $retorno = [
-                'status' => $resultado['status'],
-                'body' => json_decode($resultado['body'])
-            ];
+        if ($resultado['status'] == 200) {
+            return ['status' => $resultado['status'], 'data' => json_decode($resultado['body'])];
         } else {
-            return $retorno = [
-                'status' => $resultado['status'],
-                'body' => 'Erro ao buscar cobranças:'
-            ];
+            return ['status' => $resultado['status'], 'error' => $resultado['error']];
         }
     }
 
