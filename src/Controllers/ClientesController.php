@@ -23,7 +23,7 @@ class ClientesController
                 error_log("Log error: " . $th->getMessage());
                 $channelClientes->push([
                     'status' => 500,
-                    'error' => 'Erro interno: ' . $th->getMessage()
+                    'error' => 'Falha ao processar a requisição.'
                 ]);
             } finally {
                 $channelClientes->close();
