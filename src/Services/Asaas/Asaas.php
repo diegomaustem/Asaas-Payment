@@ -35,26 +35,26 @@ class Asaas
 
             switch($this->getMetodo()) {
                 case 'GET':
-                    $requisicao= $cliente->get($this->getEndPoint());
+                    $cliente->get($this->getEndPoint());
                     break;
                 case 'POST':
-                    $requisicao = $cliente->post($this->getEndPoint(), $this->getBody());
+                    $cliente->post($this->getEndPoint(), $this->getBody());
                     break;
                 default:
                     return ['status' => 400, 'error' => 'Método não suportado.'];
             }
 
-            if($requisicao === true && $cliente->statusCode == 200) {
+            if($cliente->statusCode >= 200 && $cliente->statusCode < 300) {
                 $response = [
                     'status' => $cliente->statusCode,
                     'body' => $cliente->body,
                 ];
             } else {
-                return ['status' => 500, 'error' => 'Falha em requisição. Tente mais tarde.'];
+                return ['status' => 500, 'error' => 'Falha na comunicação com o gateway de pagamento.'];
             }
         } catch (Throwable $th) {
             error_log("Log error: " . $th->getMessage());
-            return ['status' => 500, 'error' => 'Falha no servidor. Tente mais tarde.'];
+            return ['status' => 500, 'error' => 'Erro na comunicação com o gateway de pagamento.'];
         } finally {
             $cliente->close();
         }
