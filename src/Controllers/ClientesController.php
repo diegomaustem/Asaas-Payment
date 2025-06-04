@@ -5,6 +5,7 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Coroutine\Channel;
 use App\Services\Asaas\Asaas;
+use Throwable;
 
 class ClientesController 
 {
@@ -13,13 +14,20 @@ class ClientesController
         $channelClientes = new Channel(1);
 
         go(function () use ($channelClientes) {
-            $metodo = 'GET';
-            $endPoint = '/v3/customers';
+            try {
+                $asaas = new Asaas('GET', '/v3/customers', '');
+                $resposta = $asaas->requisicaoAPIAsaas();
 
-            $asaas = new Asaas($metodo, $endPoint, '');
-            $resposta = $asaas->requisicaoAPIAsaas();
-
-            $channelClientes->push($resposta);
+                $channelClientes->push($resposta);
+            } catch(Throwable $th) {
+                error_log("Log error: " . $th->getMessage());
+                $channelClientes->push([
+                    'status' => 500,
+                    'error' => 'Erro interno: ' . $th->getMessage()
+                ]);
+            } finally {
+                $channelClientes->close();
+            }
         });
 
         $resultado = $channelClientes->pop();
@@ -42,30 +50,37 @@ class ClientesController
 
         if($dadosClinteValido !== true) {
             return ['status' => 400, 'error' => $dadosClinteValido];
-        }else{
-            $channelCliente = new Channel(1);
+        }
 
-            go(function () use ($channelCliente, $dadosCliente) {
-                $metodo = 'POST';
-                $endPoint = '/v3/customers';
+        $channelCliente = new Channel(1);
 
-                $asaas = new Asaas($metodo, $endPoint, json_encode($dadosCliente));
+        go(function () use ($channelCliente, $dadosCliente) {
+            try {
+                $asaas = new Asaas('POST', '/v3/customers', json_encode($dadosCliente));
                 $resposta = $asaas->requisicaoAPIAsaas();
 
                 $channelCliente->push($resposta);
-            });
-
-            $resultado = $channelCliente->pop();
-
-            if ($resultado['status'] == 200) {
-                return [
-                    'status' => $resultado['status'], 
-                    'message' => 'Cliente cadastrado com sucesso.',
-                    'data' => json_decode($resultado['body'])
-                ];
-            } else {
-                return ['status' => $resultado['status'], 'error' => $resultado['error']];             
+            }catch(Throwable $th) {
+                error_log("Log error: " . $th->getMessage());
+                $channelCliente->push([
+                    'status' => 500,
+                    'error' => 'Falha ao processar a requisição.'
+                ]);
+            }finally {
+                $channelCliente->close();
             }
+        });
+
+        $resultado = $channelCliente->pop();
+
+        if ($resultado['status'] == 200) {
+            return [
+                'status' => 201, 
+                'message' => 'Cliente cadastrado com sucesso.',
+                'data' => json_decode($resultado['body'])
+            ];
+        } else {
+            return ['status' => $resultado['status'], 'error' => $resultado['error']];             
         }
     }
 
