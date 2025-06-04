@@ -6,6 +6,8 @@ use Swoole\Http\Response;
 use App\Services\Asaas\Asaas;
 use DateTime;
 use Swoole\Coroutine\Channel;
+use Throwable;
+
 class CobrancasController
 {
     public function index() 
@@ -13,13 +15,20 @@ class CobrancasController
         $channelCobranca = new Channel(1);
 
         go(function () use ($channelCobranca) {
-            $metodo = 'GET';
-            $endPoint = '/v3/payments';
+            try {
+                $asaas = new Asaas('GET', '/v3/payments', '');
+                $resposta = $asaas->requisicaoAPIAsaas();
 
-            $asaas = new Asaas($metodo, $endPoint, '');
-            $resposta = $asaas->requisicaoAPIAsaas();
-
-            $channelCobranca->push($resposta);
+                $channelCobranca->push($resposta);
+            } catch (Throwable $th) {
+                error_log("Log error: " . $th->getMessage());
+                $channelCobranca->push([
+                    'status' => 500,
+                    'error' => 'Falha ao processar a requisição.'
+                ]);
+            } finally {
+                $channelCobranca->close();
+            }
         });
 
         $resultado = $channelCobranca->pop();
