@@ -47,26 +47,33 @@ class CobrancasController
 
         if($validacao !== true) {
             return ['status' => 422, 'error' => $validacao];
-        } else {
-            $channelCobranca = new Channel(1);
+        } 
 
-            go(function () use ($channelCobranca, $dadosCobranca) {
-                $metodo = 'POST';
-                $endPoint = '/v3/payments';
+        $channelCobranca = new Channel(1);
 
-                $asaas = new Asaas($metodo, $endPoint, json_encode($dadosCobranca));
+        go(function () use ($channelCobranca, $dadosCobranca) {
+            try {
+                $asaas = new Asaas('POST', '/v3/payments', json_encode($dadosCobranca));
                 $resposta = $asaas->requisicaoAPIAsaas();
 
                 $channelCobranca->push($resposta);
-            });
-
-            $resultado = $channelCobranca->pop();
-
-            if ($resultado['status'] == 200) {
-                return ['status' => $resultado['status'], 'message' => 'Cobrança criada com sucesso.', 'data' => json_decode($resultado['body'])];
-            } else {
-                return ['status' => $resultado['status'], 'error' => $resultado['error']];
+            }catch(Throwable $th){
+                error_log("Log error: " . $th->getMessage());
+                $channelCobranca->push([
+                    'status' => 500,
+                    'error' => 'Falha ao processar a requisição.'
+                ]);
+            }finally {
+                $channelCobranca->close();
             }
+        });
+
+        $resultado = $channelCobranca->pop();
+
+        if ($resultado['status'] == 200) {
+                return ['status' => 201, 'message' => 'Cobrança criada com sucesso.', 'data' => json_decode($resultado['body'])];
+        } else {
+                return ['status' => $resultado['status'], 'error' => $resultado['error']];
         }
     }
     
