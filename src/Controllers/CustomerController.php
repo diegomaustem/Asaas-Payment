@@ -7,7 +7,7 @@ use Swoole\Coroutine\Channel;
 use App\Services\Asaas\Asaas;
 use Throwable;
 
-class ClientesController 
+class CustomerController 
 {
     public function index() 
     {

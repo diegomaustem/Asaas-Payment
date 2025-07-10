@@ -8,7 +8,7 @@ use DateTime;
 use Swoole\Coroutine\Channel;
 use Throwable;
 
-class CobrancasController
+class DebtController
 {
     public function index() 
     {
