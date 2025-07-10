@@ -11,36 +11,38 @@ class ClientesController
 {
     public function index() 
     {
-        $channelClientes = new Channel(1);
+        // $channelClientes = new Channel(1);
 
-        go(function () use ($channelClientes) {
-            try {
-                $asaas = new Asaas('GET', '/v3/customers', '');
-                $resposta = $asaas->requisicaoAPIAsaas();
+        // go(function () use ($channelClientes) {
+        //     try {
+        //         $asaas = new Asaas('GET', '/v3/customers', '');
+        //         $resposta = $asaas->requisicaoAPIAsaas();
 
-                $channelClientes->push($resposta);
-            } catch(Throwable $th) {
-                error_log("Log error: " . $th->getMessage());
-                $channelClientes->push([
-                    'status' => 500,
-                    'error' => 'Falha ao processar a requisição.'
-                ]);
-            } finally {
-                $channelClientes->close();
-            }
-        });
+        //         $channelClientes->push($resposta);
+        //     } catch(Throwable $th) {
+        //         error_log("Log error: " . $th->getMessage());
+        //         $channelClientes->push([
+        //             'status' => 500,
+        //             'error' => 'Falha ao processar a requisição.'
+        //         ]);
+        //     } finally {
+        //         $channelClientes->close();
+        //     }
+        // });
 
-        $resultado = $channelClientes->pop();
+        // $resultado = $channelClientes->pop();
 
-        if ($resultado['status'] == 200) {
-            return [
-                'status' => $resultado['status'], 
-                'message' => 'Lista de clientes obtida com sucesso.',
-                'data' => json_decode($resultado['body'])
-            ];
-        } else {
-            return ['status' => $resultado['status'], 'error' => $resultado['error']];             
-        }
+        // if ($resultado['status'] == 200) {
+        //     return [
+        //         'status' => $resultado['status'], 
+        //         'message' => 'Lista de clientes obtida com sucesso.',
+        //         'data' => json_decode($resultado['body'])
+        //     ];
+        // } else {
+        //     return ['status' => $resultado['status'], 'error' => $resultado['error']];             
+        // }
+
+        return "Clientes";
     }
 
     public function store(Request $request, Response $response) 
