@@ -60,4 +60,16 @@ class Asaas
         }
     }
 
+    public function createDebt($debt) 
+    {
+        try { 
+            $this->client->post(URL_PAYMENTS, $debt);
+            return $this->client->body;
+        } catch (Throwable $th) {
+            error_log("Log error: " . $th->getMessage());
+            throw $th;
+        } finally {
+            $this->client->close();
+        }
+    }
 }
