@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use Swoole\Http\Request;
 use Swoole\Http\Response;
+use Swoole\Coroutine\Http\Client;
 use App\Services\Asaas\Asaas;
 use DateTime;
 use Swoole\Coroutine\Channel;
@@ -12,32 +13,23 @@ class DebtController
 {
     public function index() 
     {
-        $channelCobranca = new Channel(1);
-
-        go(function () use ($channelCobranca) {
+        $channelDebts = new Channel(1);
+        
+        go(function () use ($channelDebts) {
             try {
-                $asaas = new Asaas('GET', '/v3/payments', '');
-                $resposta = $asaas->requisicaoAPIAsaas();
+                $assasService = new Asaas(new Client($_ENV['API_URL'], PORT, SSL)); 
+                $debts = $assasService->fetchDebts();
 
-                $channelCobranca->push($resposta);
-            } catch (Throwable $th) {
-                error_log("Log error: " . $th->getMessage());
-                $channelCobranca->push([
-                    'status' => 500,
-                    'error' => 'Falha ao processar a requisição.'
-                ]);
+                $channelDebts->push($debts);
+            } catch(Throwable $th) {
+                error_log("Log errorr: " . $th->getMessage());
+                throw $th;
             } finally {
-                $channelCobranca->close();
+                $channelDebts->close();
             }
         });
-
-        $resultado = $channelCobranca->pop();
-
-        if ($resultado['status'] == 200) {
-            return ['status' => $resultado['status'], 'data' => json_decode($resultado['body'])];
-        } else {
-            return ['status' => $resultado['status'], 'error' => $resultado['error']];
-        }
+        $allDebts = $channelDebts->pop();
+        return json_decode($allDebts);
     }
 
     public function store(Request $request, Response $response) 

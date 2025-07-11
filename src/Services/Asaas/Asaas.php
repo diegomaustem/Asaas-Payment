@@ -7,6 +7,7 @@ use Throwable;
 define('PORT', 443);
 define('SSL', TRUE);
 define('URL_CUSTOMERS', '/v3/customers');
+define('URL_PAYMENTS', '/v3/payments');
 class Asaas
 {
     private Client $client; 
@@ -45,4 +46,18 @@ class Asaas
             $this->client->close();
         }
     }
+
+    public function fetchDebts()
+    {
+        try { 
+            $this->client->get(URL_PAYMENTS);
+            return $this->client->body;
+        } catch (Throwable $th) {
+            error_log("Log error: " . $th->getMessage());
+            throw $th;
+        } finally {
+            $this->client->close();
+        }
+    }
+
 }
