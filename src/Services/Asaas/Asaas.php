@@ -32,4 +32,17 @@ class Asaas
             $this->client->close();
         }
     }
+
+    public function createCustomer($customer) 
+    {
+        try { 
+            $this->client->post(URL_CUSTOMERS, $customer);
+            return $this->client->body;
+        } catch (Throwable $th) {
+            error_log("Log error: " . $th->getMessage());
+            throw $th;
+        } finally {
+            $this->client->close();
+        }
+    }
 }
