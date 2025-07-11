@@ -3,101 +3,33 @@ namespace App\Services\Asaas;
 
 use Swoole\Coroutine\Http\Client;
 use Throwable;
+
+define('PORT', 443);
+define('SSL', TRUE);
+define('URL_CUSTOMERS', '/v3/customers');
 class Asaas
 {
-    private string $url;
-    private string $metodo;
-    private string $endPoint;
-    private array  $headers = [];
-    private string $body;
+    private Client $client; 
 
-    public function __construct(string $metodo, string $endPoint, string $body)
+    public function __construct(Client $client)
     {
-        $this->setMetodo($metodo);
-        $this->setEndPoint($endPoint);
-        $this->setBody($body);
-        $this->setUrl($_ENV['API_URL']);
-
-        $this->headers = [
-            'Content-Type' => 'application/json',
-            'Accept' => 'application/json',
-            'access_token' => $_ENV['ASAAS_KEY']
-        ];
+        $this->client = $client;
+        $this->client->setHeaders(
+            ['Content-Type' => 'application/json', 'Accept' => 'application/json','access_token' => $_ENV['ASAAS_KEY']]
+        );
+        $this->client->set(['timeout' => 5]);
     }
 
-    public function requisicaoAPIAsaas()
+    public function fetchCustomers()
     {
-        $cliente = null;
-        try {
-            $cliente = new Client($this->getUrl(), 443, true);
-            $cliente->set(['timeout' => 5]);
-            $cliente->setHeaders($this->headers);
-
-            switch($this->getMetodo()) {
-                case 'GET':
-                    $cliente->get($this->getEndPoint());
-                    break;
-                case 'POST':
-                    $cliente->post($this->getEndPoint(), $this->getBody());
-                    break;
-                default:
-                    return ['status' => 400, 'error' => 'Método não suportado.'];
-            }
-
-            if($cliente->statusCode >= 200 && $cliente->statusCode < 300) {
-                $response = [
-                    'status' => $cliente->statusCode,
-                    'body' => $cliente->body,
-                ];
-            } else {
-                return ['status' => 500, 'error' => 'Falha na comunicação com o gateway de pagamento.'];
-            }
+        try { 
+            $this->client->get(URL_CUSTOMERS);
+            return $this->client->body;
         } catch (Throwable $th) {
             error_log("Log error: " . $th->getMessage());
-            return ['status' => 500, 'error' => 'Erro na comunicação com o gateway de pagamento.'];
+            throw $th;
         } finally {
-            $cliente->close();
+            $this->client->close();
         }
-        return $response;
-    }
-
-    public function getMetodo(): string
-    {
-        return $this->metodo;
-    }
-
-    public function setMetodo(string $metodo): void
-    {
-        $this->metodo = $metodo;
-    }
-
-    public function getEndPoint(): string
-    {
-        return $this->endPoint;
-    }
-
-    public function setEndPoint(string $endPoint): void 
-    {
-        $this->endPoint = $endPoint;
-    }
-
-    public function getBody(): string 
-    {
-        return $this->body;
-    }
-
-    public function setBody(string $body): void
-    {
-        $this->body = $body;
-    }
-
-    public function getUrl(): string 
-    {
-        return $this->url;
-    }
-
-    public function setUrl(string $url): void 
-    {
-        $this->url = $url;
     }
 }

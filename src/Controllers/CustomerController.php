@@ -4,87 +4,77 @@ namespace App\Controllers;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Coroutine\Channel;
+use Swoole\Coroutine\Http\Client;
 use App\Services\Asaas\Asaas;
 use Throwable;
+
+define('PORT', 443);
+define('SSL', TRUE);
 
 class CustomerController 
 {
     public function index() 
     {
-        // $channelClientes = new Channel(1);
+        $channelCustomers = new Channel(1);
 
-        // go(function () use ($channelClientes) {
-        //     try {
-        //         $asaas = new Asaas('GET', '/v3/customers', '');
-        //         $resposta = $asaas->requisicaoAPIAsaas();
-
-        //         $channelClientes->push($resposta);
-        //     } catch(Throwable $th) {
-        //         error_log("Log error: " . $th->getMessage());
-        //         $channelClientes->push([
-        //             'status' => 500,
-        //             'error' => 'Falha ao processar a requisição.'
-        //         ]);
-        //     } finally {
-        //         $channelClientes->close();
-        //     }
-        // });
-
-        // $resultado = $channelClientes->pop();
-
-        // if ($resultado['status'] == 200) {
-        //     return [
-        //         'status' => $resultado['status'], 
-        //         'message' => 'Lista de clientes obtida com sucesso.',
-        //         'data' => json_decode($resultado['body'])
-        //     ];
-        // } else {
-        //     return ['status' => $resultado['status'], 'error' => $resultado['error']];             
-        // }
-
-        return "Clientes";
-    }
-
-    public function store(Request $request, Response $response) 
-    {
-        $dadosCliente = json_decode($request->rawContent(), true);
-        $dadosClinteValido = $this->validaDadosCliente($dadosCliente);
-
-        if($dadosClinteValido !== true) {
-            return ['status' => 400, 'error' => $dadosClinteValido];
-        }
-
-        $channelCliente = new Channel(1);
-
-        go(function () use ($channelCliente, $dadosCliente) {
+        go(function () use ($channelCustomers) {
             try {
-                $asaas = new Asaas('POST', '/v3/customers', json_encode($dadosCliente));
-                $resposta = $asaas->requisicaoAPIAsaas();
+                $assasService = new Asaas(new Client($_ENV['API_URL'], PORT, SSL)); 
+                $custumers = $assasService->fetchCustomers();
 
-                $channelCliente->push($resposta);
-            }catch(Throwable $th) {
-                error_log("Log error: " . $th->getMessage());
-                $channelCliente->push([
-                    'status' => 500,
-                    'error' => 'Falha ao processar a requisição.'
-                ]);
-            }finally {
-                $channelCliente->close();
+                $channelCustomers->push($custumers);
+            } catch(Throwable $th) {
+                error_log("Log errorr: " . $th->getMessage());
+                throw $th;
+            } finally {
+                $channelCustomers->close();
             }
         });
 
-        $resultado = $channelCliente->pop();
-
-        if ($resultado['status'] == 200) {
-            return [
-                'status' => 201, 
-                'message' => 'Cliente cadastrado com sucesso.',
-                'data' => json_decode($resultado['body'])
-            ];
-        } else {
-            return ['status' => $resultado['status'], 'error' => $resultado['error']];             
-        }
+        $allCustomers = $channelCustomers->pop();
+        return json_decode($allCustomers);
     }
+
+    // public function store(Request $request, Response $response) 
+    // {
+    //     $dadosCliente = json_decode($request->rawContent(), true);
+    //     $dadosClinteValido = $this->validaDadosCliente($dadosCliente);
+
+    //     if($dadosClinteValido !== true) {
+    //         return ['status' => 400, 'error' => $dadosClinteValido];
+    //     }
+
+    //     $channelCliente = new Channel(1);
+
+    //     go(function () use ($channelCliente, $dadosCliente) {
+    //         try {
+    //             $asaas = new Asaas('POST', '/v3/customers', json_encode($dadosCliente));
+    //             $resposta = $asaas->requisicaoAPIAsaas();
+
+    //             $channelCliente->push($resposta);
+    //         }catch(Throwable $th) {
+    //             error_log("Log error: " . $th->getMessage());
+    //             $channelCliente->push([
+    //                 'status' => 500,
+    //                 'error' => 'Falha ao processar a requisição.'
+    //             ]);
+    //         }finally {
+    //             $channelCliente->close();
+    //         }
+    //     });
+
+    //     $resultado = $channelCliente->pop();
+
+    //     if ($resultado['status'] == 200) {
+    //         return [
+    //             'status' => 201, 
+    //             'message' => 'Cliente cadastrado com sucesso.',
+    //             'data' => json_decode($resultado['body'])
+    //         ];
+    //     } else {
+    //         return ['status' => $resultado['status'], 'error' => $resultado['error']];             
+    //     }
+    // }
 
     private function validaDadosCliente(array $dadosCliente): array|bool
     {
