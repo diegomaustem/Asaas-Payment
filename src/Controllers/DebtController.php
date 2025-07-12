@@ -5,16 +5,15 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Coroutine\Http\Client;
 use App\Services\Asaas\Asaas;
-use DateTime;
 use Swoole\Coroutine\Channel;
+use DateTime;
 use Throwable;
-
 class DebtController
 {
     public function index() 
     {
         $channelDebts = new Channel(1);
-        
+
         go(function () use ($channelDebts) {
             try {
                 $assasService = new Asaas(new Client($_ENV['API_URL'], PORT, SSL)); 
@@ -34,77 +33,74 @@ class DebtController
 
     public function store(Request $request, Response $response) 
     {
-        $dadosCobranca = json_decode($request->rawContent(), true);
-        $validacao = $this->validaCobranca($dadosCobranca);
+        $debtData = json_decode($request->rawContent(), true);
+        $validDebt= $this->validateDebtData($debtData);
 
-        if($validacao !== true) {
-            return ['status' => 422, 'error' => $validacao];
-        } 
+        if($validDebt !== true) {
+            $response->status(422);
+            $response->end(json_encode([
+                'code' => 422, 
+                'error' => 'Validation error in debt data.', 
+                'details' => $validDebt
+            ]));
+            return;
+        }
 
-        $channelCobranca = new Channel(1);
+        $channelDebt = new Channel(1);
 
-        go(function () use ($channelCobranca, $dadosCobranca) {
+        go(function () use ($channelDebt, $debtData) {
             try {
-                $asaas = new Asaas('POST', '/v3/payments', json_encode($dadosCobranca));
-                $resposta = $asaas->requisicaoAPIAsaas();
+                $assasService = new Asaas(new Client($_ENV['API_URL'], PORT, SSL)); 
+                $debt = $assasService->createDebt(json_encode($debtData));
 
-                $channelCobranca->push($resposta);
+                $channelDebt->push($debt);
             }catch(Throwable $th){
                 error_log("Log error: " . $th->getMessage());
-                $channelCobranca->push([
-                    'status' => 500,
-                    'error' => 'Falha ao processar a requisição.'
-                ]);
+                throw $th;
             }finally {
-                $channelCobranca->close();
+                $channelDebt->close();
             }
         });
-
-        $resultado = $channelCobranca->pop();
-
-        if ($resultado['status'] == 200) {
-                return ['status' => 201, 'message' => 'Cobrança criada com sucesso.', 'data' => json_decode($resultado['body'])];
-        } else {
-                return ['status' => $resultado['status'], 'error' => $resultado['error']];
-        }
+        $debt = $channelDebt->pop();
+        return json_decode($debt);
     }
     
-    private function validaCobranca(array $dadosCobranca): array|bool
+    private function validateDebtData(array $debtData): array|bool
     {
         $errors = [];
 
-        if (!isset($dadosCobranca['customer']) || !is_string($dadosCobranca['customer']) || trim($dadosCobranca['customer']) === '') {
-            $errors['customer'] = 'O campo "customer" é obrigatório e deve ser uma string não vazia.';
-        } elseif (strlen($dadosCobranca['customer']) < 3) {
-            $errors['customer'] = 'O customer deve ter pelo menos 3 caracteres.';
+        if (!isset($debtData['customer']) || !is_string($debtData['customer']) || trim($debtData['customer']) === '') {
+            $errors['customer'] = 'The customer field is required and must be a non-empty string.';
+        } elseif (strlen($debtData['customer']) < 3) {
+            $errors['customer'] = 'The client must be at least 3 characters long.';
         }
 
-        if (!isset($dadosCobranca['billingType']) || !is_string($dadosCobranca['billingType']) || trim($dadosCobranca['billingType']) === '') {
-            $errors['billingType'] = 'O campo "billingType" é obrigatório e deve ser uma string não vazia.';
-        } elseif (strtoupper($dadosCobranca['billingType']) !== 'PIX') {
-            $errors['billingType'] = 'O billingType deve ser "PIX".';
+        if (!isset($debtData['billingType']) || !is_string($debtData['billingType']) || trim($debtData['billingType']) === '') {
+            $errors['billingType'] = 'The "billingType" field is required and must be a non-empty string.';
+        } elseif (strtoupper($debtData['billingType']) !== 'PIX') {
+            $errors['billingType'] = 'BillingType must be "PIX".';
         }
 
-        if (!isset($dadosCobranca['value']) || !is_numeric($dadosCobranca['value'])) {
-            $errors['value'] = 'O campo "value" é obrigatório e deve ser um número.';
-        } elseif ($dadosCobranca['value'] <= 0) {
-            $errors['value'] = 'O valor deve ser maior que zero.';
+        if (!isset($debtData['value']) || !is_numeric($debtData['value'])) {
+            $errors['value'] = 'The "value" field is required and must be a number.';
+        } elseif ($debtData['value'] <= 0) {
+            $errors['value'] = 'The value must be greater than zero.';
         }
 
-        if (!isset($dadosCobranca['dueDate']) || !is_string($dadosCobranca['dueDate']) || trim($dadosCobranca['dueDate']) === '') {
-            $errors['dueDate'] = 'O campo "dueDate" é obrigatório e deve ser uma string não vazia.';
+        if (!isset($debtData['dueDate']) || !is_string($debtData['dueDate']) || trim($debtData['dueDate']) === '') {
+            $errors['dueDate'] = 'The dueDate field is required and must be a non-empty string.';
         } else {
-            $date = DateTime::createFromFormat('Y-m-d', $dadosCobranca['dueDate']);
-            if (!$date || $date->format('Y-m-d') !== $dadosCobranca['dueDate']) {
-                $errors['dueDate'] = 'O campo "dueDate" deve estar no formato YYYY-MM-DD.';
+            $date = DateTime::createFromFormat('Y-m-d', $debtData['dueDate']);
+            if (!$date || $date->format('Y-m-d') !== $debtData['dueDate']) {
+                $errors['dueDate'] = 'The dueDate field must be in the format YYYY-MM-DD.';
             } elseif ($date < new DateTime('today')) {
-                $errors['dueDate'] = 'A data de vencimento não pode ser anterior ao dia atual.';
+                $errors['dueDate'] = 'The due date cannot be earlier than the current day.';
             }
         }
 
         return !empty($errors) ? [
             'code' => 422,
-            'error' => 'Dados inválidos.',
+            'error' => 'Invalid data.',
             'details' => $errors
         ] : true;
     }

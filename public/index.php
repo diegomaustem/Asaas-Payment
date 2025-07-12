@@ -6,6 +6,11 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use App\Router\Router;
 
+define('PORT', 443);
+define('SSL', TRUE);
+define('URL_CUSTOMERS', '/v3/customers');
+define('URL_PAYMENTS', '/v3/payments');
+
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../');
 $dotenv->load();
 

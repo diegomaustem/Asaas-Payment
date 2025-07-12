@@ -3,11 +3,6 @@ namespace App\Services\Asaas;
 
 use Swoole\Coroutine\Http\Client;
 use Throwable;
-
-define('PORT', 443);
-define('SSL', TRUE);
-define('URL_CUSTOMERS', '/v3/customers');
-define('URL_PAYMENTS', '/v3/payments');
 class Asaas
 {
     private Client $client; 

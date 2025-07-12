@@ -7,10 +7,6 @@ use Swoole\Coroutine\Channel;
 use Swoole\Coroutine\Http\Client;
 use App\Services\Asaas\Asaas;
 use Throwable;
-
-define('PORT', 443);
-define('SSL', TRUE);
-
 class CustomerController 
 {
     public function index() 
@@ -39,8 +35,6 @@ class CustomerController
     {
         $customerData = json_decode($request->rawContent(), true);
         $validCustomer = $this->validateCustomerData($customerData);
-
-                // var_dump($validCustomer);die();
 
         if($validCustomer !== true) {
             $response->status(422);
